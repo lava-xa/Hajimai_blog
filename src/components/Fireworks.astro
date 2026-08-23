@@ -1,0 +1,205 @@
+<canvas id="fireworks-canvas" class="fireworks" aria-hidden="true"></canvas>
+
+<script>
+interface Particle {
+	x: number;
+	y: number;
+	vx: number;
+	vy: number;
+	size: number;
+	alpha: number;
+	rotation: number;
+	rotationSpeed: number;
+	color: string;
+}
+
+interface Ring {
+	x: number;
+	y: number;
+	radius: number;
+	alpha: number;
+	color: string;
+}
+
+const STORAGE_KEY = "fireworks-enabled";
+const canvas = document.querySelector<HTMLCanvasElement>("#fireworks-canvas");
+const particles: Particle[] = [];
+const rings: Ring[] = [];
+let context = canvas?.getContext("2d") ?? null;
+let enabled = localStorage.getItem(STORAGE_KEY) !== "false";
+let animationFrame: number | null = null;
+
+function isDarkMode() {
+	return document.documentElement.classList.contains("dark");
+}
+
+function getPalette() {
+	return isDarkMode()
+		? ["252, 146, 174", "202, 180, 190", "207, 198, 255"]
+		: ["102, 167, 221", "62, 131, 225", "33, 78, 194"];
+}
+
+function random(min: number, max: number) {
+	return Math.random() * (max - min) + min;
+}
+
+function resizeCanvas() {
+	if (!canvas) return;
+
+	const ratio = Math.min(window.devicePixelRatio || 1, 2);
+	canvas.width = Math.floor(window.innerWidth * ratio);
+	canvas.height = Math.floor(window.innerHeight * ratio);
+	canvas.style.width = `${window.innerWidth}px`;
+	canvas.style.height = `${window.innerHeight}px`;
+	context = canvas.getContext("2d");
+	context?.setTransform(ratio, 0, 0, ratio, 0, 0);
+}
+
+function drawParticle(particle: Particle) {
+	if (!context) return;
+
+	context.save();
+	context.globalAlpha = particle.alpha;
+	context.translate(particle.x, particle.y);
+	context.rotate(particle.rotation);
+	context.beginPath();
+	context.moveTo(0, -particle.size);
+	context.lineTo(particle.size * 0.86, particle.size * 0.5);
+	context.lineTo(-particle.size * 0.86, particle.size * 0.5);
+	context.closePath();
+	context.fillStyle = particle.color;
+	context.fill();
+	context.restore();
+}
+
+function drawRing(ring: Ring) {
+	if (!context) return;
+
+	context.save();
+	context.globalAlpha = ring.alpha;
+	context.beginPath();
+	context.arc(ring.x, ring.y, ring.radius, 0, Math.PI * 2);
+	context.lineWidth = Math.max(1, 6 * ring.alpha);
+	context.strokeStyle = ring.color;
+	context.stroke();
+	context.restore();
+}
+
+function tick() {
+	if (!context) {
+		animationFrame = null;
+		return;
+	}
+
+	context.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+	for (let i = particles.length - 1; i >= 0; i--) {
+		const particle = particles[i];
+		particle.x += particle.vx;
+		particle.y += particle.vy;
+		particle.vy += 0.04;
+		particle.vx *= 0.985;
+		particle.vy *= 0.985;
+		particle.size *= 0.965;
+		particle.alpha -= 0.018;
+		particle.rotation += particle.rotationSpeed;
+		drawParticle(particle);
+
+		if (particle.alpha <= 0 || particle.size <= 0.2) {
+			particles.splice(i, 1);
+		}
+	}
+
+	for (let i = rings.length - 1; i >= 0; i--) {
+		const ring = rings[i];
+		ring.radius += 3.4;
+		ring.alpha -= 0.018;
+		drawRing(ring);
+
+		if (ring.alpha <= 0) {
+			rings.splice(i, 1);
+		}
+	}
+
+	if (particles.length > 0 || rings.length > 0) {
+		animationFrame = requestAnimationFrame(tick);
+	} else {
+		animationFrame = null;
+	}
+}
+
+function createBurst(x: number, y: number) {
+	const palette = getPalette();
+	const ringColor = isDarkMode() ? "233, 179, 237" : "106, 159, 255";
+
+	rings.push({
+		x,
+		y,
+		radius: 8,
+		alpha: 0.55,
+		color: `rgb(${ringColor})`,
+	});
+
+	for (let i = 0; i < 22; i++) {
+		const angle = random(0, Math.PI * 2);
+		const speed = random(2.2, 6);
+		const color = palette[Math.floor(random(0, palette.length))];
+
+		particles.push({
+			x,
+			y,
+			vx: Math.cos(angle) * speed,
+			vy: Math.sin(angle) * speed,
+			size: random(6, 12),
+			alpha: random(0.55, 0.95),
+			rotation: random(0, Math.PI * 2),
+			rotationSpeed: random(-0.18, 0.18),
+			color: `rgb(${color})`,
+		});
+	}
+
+	if (animationFrame === null) {
+		animationFrame = requestAnimationFrame(tick);
+	}
+}
+
+function clearFireworks() {
+	particles.length = 0;
+	rings.length = 0;
+	if (animationFrame !== null) {
+		cancelAnimationFrame(animationFrame);
+		animationFrame = null;
+	}
+	context?.clearRect(0, 0, window.innerWidth, window.innerHeight);
+}
+
+function handlePointerDown(event: PointerEvent) {
+	if (!enabled || !event.isPrimary || event.button !== 0) return;
+	createBurst(event.clientX, event.clientY);
+}
+
+function handleToggle(event: Event) {
+	enabled = (event as CustomEvent<{ enabled: boolean }>).detail.enabled;
+	if (!enabled) clearFireworks();
+}
+
+resizeCanvas();
+document.addEventListener("pointerdown", handlePointerDown);
+window.addEventListener("resize", resizeCanvas);
+window.addEventListener("fireworks:toggle", handleToggle);
+</script>
+
+<style>
+.fireworks {
+	position: fixed;
+	inset: 0;
+	z-index: 999;
+	pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.fireworks {
+		display: none;
+	}
+}
+</style>
