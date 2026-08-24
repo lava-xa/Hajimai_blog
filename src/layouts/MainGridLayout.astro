@@ -1,16 +1,15 @@
 ---
+import Banner from "@components/Banner.astro";
 import BackToTop from "@components/control/BackToTop.astro";
 import Footer from "@components/Footer.astro";
 import Navbar from "@components/Navbar.astro";
 import SideBar from "@components/widget/SideBar.astro";
 import type { MarkdownHeading } from "astro";
 import { Icon } from "astro-icon/components";
-import ImageWrapper from "../components/misc/ImageWrapper.astro";
 import TOC from "../components/widget/TOC.astro";
 import { siteConfig } from "../config";
 import {
 	BANNER_HEIGHT,
-	BANNER_HEIGHT_EXTEND,
 	MAIN_PANEL_OVERLAPS_BANNER_HEIGHT,
 } from "../constants/constants";
 import Layout from "./Layout.astro";
@@ -35,7 +34,7 @@ const {
 const hasBannerCredit =
 	siteConfig.banner.enable && siteConfig.banner.credit.enable;
 const hasBannerLink = !!siteConfig.banner.credit.url;
-const darkBannerSrc = siteConfig.banner.darkSrc || siteConfig.banner.src;
+const isHomePage = Astro.url.pathname === "/" || Astro.url.pathname === "";
 
 const mainPanelTop = siteConfig.banner.enable
 	? `calc(${BANNER_HEIGHT}vh - ${MAIN_PANEL_OVERLAPS_BANNER_HEIGHT}rem)`
@@ -52,19 +51,17 @@ const mainPanelTop = siteConfig.banner.enable
     </div>
 </div>
 
-<!-- Banner -->
-{siteConfig.banner.enable && <div id="banner-wrapper" class={`absolute z-10 w-full transition duration-700 overflow-hidden`} style={`top: -${BANNER_HEIGHT_EXTEND}vh`}>
-    <div id="banner" class="object-cover h-full transition duration-700 opacity-0 scale-105 relative">
-        <ImageWrapper alt="Banner image of the blog" class="absolute inset-0 transition-opacity duration-700 opacity-100 dark:opacity-0"
-                      src={siteConfig.banner.src} position={siteConfig.banner.position} mobileFit="contain"
-        >
-        </ImageWrapper>
-        <ImageWrapper alt="Dark banner image of the blog" class="absolute inset-0 transition-opacity duration-700 opacity-0 dark:opacity-100"
-                      src={darkBannerSrc} position={siteConfig.banner.position} mobileFit="contain"
-        >
-        </ImageWrapper>
-    </div>
-</div>}
+<!-- Mizuki-style banner -->
+{siteConfig.banner.enable && (
+	<Banner
+		images={siteConfig.banner.src}
+		position={siteConfig.banner.position}
+		showTextOverlay={isHomePage}
+		homeText={siteConfig.banner.homeText}
+		carousel={siteConfig.banner.carousel}
+		showWaves={siteConfig.banner.waves?.enable ?? true}
+	/>
+)}
 
 <!-- Main content -->
 <div id="main-panel" class="absolute w-full z-30 pointer-events-none" style={`top: ${mainPanelTop}`}>
@@ -130,29 +127,3 @@ const mainPanelTop = siteConfig.banner.enable
     </div>
 </div>
 </Layout>
-
-<style>
-#banner.banner-depth-in {
-	animation: banner-depth-in 0.85s cubic-bezier(0.25, 0.46, 0.45, 0.94)
-		forwards;
-	transform-origin: center;
-}
-
-@keyframes banner-depth-in {
-	from {
-		filter: blur(10px);
-		scale: 1.5;
-	}
-
-	to {
-		filter: none;
-		scale: 1;
-	}
-}
-
-@media (prefers-reduced-motion: reduce) {
-	#banner.banner-depth-in {
-		animation: none;
-	}
-}
-</style>

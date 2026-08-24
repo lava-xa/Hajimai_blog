@@ -17,9 +17,21 @@ export const siteConfig: SiteConfig = {
 	},
 	banner: {
 		enable: true,
-		src: "assets/images/banner.webp", // Relative to the /src directory. Relative to the /public directory if it starts with '/'
-		darkSrc: "assets/images/banner_dark.webp", // Optional banner image for dark mode
+		src: ["assets/images/banner.webp", "assets/images/banner_dark.webp"], // 仅使用这两张原有图片进行轮播
 		position: "center", // Equivalent to object-position, only supports 'top', 'center', 'bottom'. 'center' by default
+		carousel: {
+			enable: true,
+			interval: 6, // 每张图片展示时长（秒）
+			fadeDuration: 1.5, // 交叉淡入淡出时长（秒）
+		},
+		waves: {
+			enable: true,
+		},
+		homeText: {
+			enable: true,
+			title: "哈基麦",
+			subtitle: "孩子们这里是传奇耐活王哈基麦",
+		},
 		credit: {
 			enable: false, // Display the credit text of the banner image
 			text: "", // Credit text to be displayed

@@ -1,7 +1,5 @@
 ---
-import "@fontsource/roboto/400.css";
-import "@fontsource/roboto/500.css";
-import "@fontsource/roboto/700.css";
+import "../styles/fonts.css";
 
 import ConfigCarrier from "@components/ConfigCarrier.astro";
 import Fireworks from "@components/Fireworks.astro";
@@ -40,13 +38,14 @@ const isHomePage = pathsEqual(Astro.url.pathname, url("/"));
 // why doing this in Layout instead of GlobalStyles: https://github.com/withastro/astro/issues/6728#issuecomment-1502203757
 const configHue = siteConfig.themeColor.hue;
 if (!banner || typeof banner !== "string" || banner.trim() === "") {
-	banner = siteConfig.banner.src;
+	banner = siteConfig.banner.src[0];
 }
 
 // TODO don't use post cover as banner for now
-banner = siteConfig.banner.src;
+banner = siteConfig.banner.src[0];
 
-const enableBanner = siteConfig.banner.enable;
+const enableBanner =
+	siteConfig.banner.enable && siteConfig.banner.src.length > 0;
 
 let pageTitle: string;
 if (title) {
@@ -149,9 +148,10 @@ const bannerOffset =
 		<link rel="alternate" type="application/rss+xml" title={profileConfig.name} href={`${Astro.site}rss.xml`}/>
 
 	</head>
-	<body class=" min-h-screen transition " class:list={[{"lg:is-home": isHomePage, "enable-banner": enableBanner}]}
+	<body class=" min-h-screen transition " class:list={[{"is-home": isHomePage, "enable-banner": enableBanner}]}
 		  data-overlayscrollbars-initialize
 	>
+		{isHomePage && enableBanner && <div class="top-gradient-highlight" aria-hidden="true"></div>}
 		<ConfigCarrier></ConfigCarrier>
 		<Fireworks />
 		<slot />
@@ -194,14 +194,23 @@ const bannerOffset =
 		.enable-banner #top-row {
 			height: 4.5rem;
 		}
-		.enable-banner #banner-wrapper {
+		.enable-banner.is-home #top-row {
+			position: absolute;
+			left: 0;
+			right: 0;
+			width: 100%;
+		}
+		.enable-banner #banner-wrapper,
+		.enable-banner.is-home #banner-wrapper {
 			position: relative;
 			top: auto !important;
-			height: auto;
-			aspect-ratio: 3 / 2;
+			height: max(72vh, 30rem);
+			min-height: 30rem;
+			aspect-ratio: auto;
 			transform: none;
 		}
-		.enable-banner #banner {
+		.enable-banner #banner,
+		.enable-banner.is-home #banner {
 			height: 100%;
 			transform: none;
 		}
@@ -209,10 +218,42 @@ const bannerOffset =
 			position: relative;
 			top: auto !important;
 		}
+		.enable-banner.is-home #main-grid {
+			transform: none;
+		}
 	}
 	.navbar-hidden {
 		@apply opacity-0 -translate-y-16
 	}
+}
+
+.top-gradient-highlight {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 11rem;
+	background: linear-gradient(to bottom, rgba(255, 255, 255, 0.48), rgba(255, 255, 255, 0.16) 55%, transparent);
+	pointer-events: none;
+	z-index: 20;
+}
+
+.dark .top-gradient-highlight {
+	background: linear-gradient(to bottom, rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.12) 55%, transparent);
+}
+
+.enable-banner.is-home #navbar .navbar-surface,
+.enable-banner.is-home #navbar .navbar-onload-cover {
+	background: transparent;
+	box-shadow: none;
+}
+
+.enable-banner.is-home #navbar a[aria-label="返回主页"] svg {
+	color: rgba(0, 0, 0, 0.75);
+}
+
+.dark .enable-banner.is-home #navbar a[aria-label="返回主页"] svg {
+	color: rgba(255, 255, 255, 0.82);
 }
 </style>
 

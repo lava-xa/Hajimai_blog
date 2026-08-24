@@ -1,0 +1,401 @@
+---
+import ImageWrapper from "@components/misc/ImageWrapper.astro";
+import { BANNER_HEIGHT_EXTEND } from "@constants/constants";
+
+interface Props {
+	images: string[];
+	position?: "top" | "center" | "bottom";
+	showTextOverlay?: boolean;
+	homeText?: {
+		enable: boolean;
+		title: string;
+		subtitle: string;
+	};
+	carousel?: {
+		enable: boolean;
+		interval: number;
+		fadeDuration: number;
+	};
+	showWaves?: boolean;
+}
+
+const {
+	images,
+	position = "center",
+	showTextOverlay = false,
+	homeText,
+	carousel = {
+		enable: true,
+		interval: 6,
+		fadeDuration: 1.5,
+	},
+	showWaves = true,
+} = Astro.props;
+
+const bannerImages = images.filter(Boolean);
+const isCarouselEnabled = carousel.enable && bannerImages.length > 1;
+const intervalMs = Math.max(carousel.interval, 2) * 1000;
+const fadeDurationMs = Math.min(
+	Math.max(carousel.fadeDuration, 0.3) * 1000,
+	intervalMs - 250,
+);
+const kenBurnsDurationMs = intervalMs + fadeDurationMs;
+---
+
+{
+	bannerImages.length > 0 && (
+		<div
+			id="banner-wrapper"
+			class="absolute z-10 w-full overflow-hidden transition duration-700"
+			style={`top: -${BANNER_HEIGHT_EXTEND}vh`}
+		>
+			<div
+				id="banner"
+				class="relative h-full overflow-hidden opacity-0 scale-105 transition duration-700"
+			>
+				<div
+					id="banner-carousel"
+					class="relative h-full w-full overflow-hidden"
+					data-active-index="0"
+					data-carousel-enabled={isCarouselEnabled ? "true" : "false"}
+					data-carousel-interval={intervalMs}
+					style={`--banner-fade-duration: ${fadeDurationMs}ms; --banner-ken-burns-duration: ${kenBurnsDurationMs}ms;`}
+				>
+					{bannerImages.map((src, index) => (
+						<div
+							class="banner-slide absolute inset-0 h-full w-full"
+							data-banner-slide
+							data-banner-index={index}
+							data-active={index === 0 ? "true" : "false"}
+							aria-hidden={index === 0 ? "false" : "true"}
+						>
+							<ImageWrapper
+								alt={`Banner image ${index + 1} of the blog`}
+								class="absolute inset-0 h-full w-full"
+								src={src}
+								position={position}
+								mobileFit="cover"
+							/>
+						</div>
+					))}
+				</div>
+			</div>
+
+			{homeText?.enable && showTextOverlay && (
+				<div class="banner-text-overlay pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+					<div class="w-[88%] text-center md:w-3/4">
+						<h1 class="banner-title mb-2 text-white md:mb-4">
+							{homeText.title}
+						</h1>
+						<p class="banner-subtitle text-white/90">
+							{homeText.subtitle}
+						</p>
+					</div>
+				</div>
+			)}
+
+			{showWaves && (
+				<div
+					class="banner-waves pointer-events-none absolute -bottom-px left-0 z-30 w-full"
+					aria-hidden="true"
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						viewBox="0 20 150 32"
+						preserveAspectRatio="none"
+						shape-rendering="auto"
+					>
+						<defs>
+							<path
+								id="gentle-wave"
+								d="M-160 44c30 0 58-18 88-18s58 18 88 18 58-18 88-18 58 18 88 18v48h-352z"
+							/>
+						</defs>
+						<g class="wave-parallax">
+							<use href="#gentle-wave" x="48" y="0" class="wave wave-1" />
+							<use href="#gentle-wave" x="48" y="3" class="wave wave-2" />
+							<use href="#gentle-wave" x="48" y="5" class="wave wave-3" />
+							<use href="#gentle-wave" x="48" y="7" class="wave wave-4" />
+						</g>
+					</svg>
+				</div>
+			)}
+		</div>
+	)
+}
+
+<script is:inline>
+	(function initBannerCarousel() {
+		var container = document.getElementById("banner-carousel");
+		if (!container) return;
+
+		if (window.__hajimaiBannerCarouselCleanup) {
+			window.__hajimaiBannerCarouselCleanup();
+		}
+
+		var slides = Array.from(container.querySelectorAll("[data-banner-slide]"));
+		var carouselEnabled = container.dataset.carouselEnabled === "true";
+		var interval = Number.parseInt(
+			container.dataset.carouselInterval || "6000",
+			10,
+		);
+		var activeIndex = Number.parseInt(container.dataset.activeIndex || "0", 10);
+		var timerId = null;
+		var touchStartX = 0;
+		var touchStartY = 0;
+
+		function restartKenBurns(slide) {
+			slide.classList.remove("banner-kb");
+			void slide.offsetWidth;
+			slide.classList.add("banner-kb");
+		}
+
+		function activateSlide(nextIndex) {
+			if (slides.length < 2 || nextIndex === activeIndex) return;
+
+			var previousSlide = slides[activeIndex];
+			var nextSlide = slides[nextIndex];
+			previousSlide.dataset.active = "false";
+			previousSlide.setAttribute("aria-hidden", "true");
+			nextSlide.dataset.active = "true";
+			nextSlide.setAttribute("aria-hidden", "false");
+			restartKenBurns(nextSlide);
+			activeIndex = nextIndex;
+			container.dataset.activeIndex = String(activeIndex);
+			container.dispatchEvent(
+				new CustomEvent("banner:change", {
+					detail: { activeIndex: activeIndex },
+				}),
+			);
+		}
+
+		function showNext() {
+			activateSlide((activeIndex + 1) % slides.length);
+		}
+
+		function showPrevious() {
+			activateSlide((activeIndex - 1 + slides.length) % slides.length);
+		}
+
+		function stopCarousel() {
+			if (timerId !== null) {
+				window.clearInterval(timerId);
+				timerId = null;
+			}
+		}
+
+		function startCarousel() {
+			stopCarousel();
+			if (!carouselEnabled || slides.length < 2 || document.hidden) return;
+			timerId = window.setInterval(showNext, interval);
+		}
+
+		function handleVisibilityChange() {
+			if (document.hidden) {
+				stopCarousel();
+			} else {
+				startCarousel();
+			}
+		}
+
+		function handleTouchStart(event) {
+			var touch = event.touches[0];
+			touchStartX = touch.clientX;
+			touchStartY = touch.clientY;
+			stopCarousel();
+		}
+
+		function handleTouchEnd(event) {
+			var touch = event.changedTouches[0];
+			var deltaX = touch.clientX - touchStartX;
+			var deltaY = touch.clientY - touchStartY;
+			if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
+				if (deltaX < 0) showNext();
+				else showPrevious();
+			}
+			touchStartX = 0;
+			touchStartY = 0;
+			startCarousel();
+		}
+
+		if (slides[activeIndex]) restartKenBurns(slides[activeIndex]);
+		document.addEventListener("visibilitychange", handleVisibilityChange);
+		container.addEventListener("mouseenter", stopCarousel);
+		container.addEventListener("mouseleave", startCarousel);
+		container.addEventListener("touchstart", handleTouchStart, { passive: true });
+		container.addEventListener("touchend", handleTouchEnd, { passive: true });
+		startCarousel();
+
+		window.__hajimaiBannerCarouselCleanup = function () {
+			stopCarousel();
+			document.removeEventListener("visibilitychange", handleVisibilityChange);
+			container.removeEventListener("mouseenter", stopCarousel);
+			container.removeEventListener("mouseleave", startCarousel);
+			container.removeEventListener("touchstart", handleTouchStart);
+			container.removeEventListener("touchend", handleTouchEnd);
+		};
+	})();
+</script>
+
+<style is:global>
+	.banner-slide {
+		opacity: 0;
+		z-index: 0;
+		transition: opacity var(--banner-fade-duration, 1500ms) ease-in-out;
+	}
+
+	.banner-slide[data-active="true"] {
+		opacity: 1;
+		z-index: 1;
+	}
+
+	.banner-kb img {
+		animation: banner-ken-burns var(--banner-ken-burns-duration, 7500ms)
+			ease-out forwards;
+		transform-origin: center;
+		will-change: transform;
+	}
+
+	.banner-text-overlay {
+		padding-top: 1.5rem;
+		text-wrap: balance;
+	}
+
+	.banner-title {
+		font-size: clamp(3.5rem, 7vw, 7.5rem);
+		font-weight: 700;
+		line-height: 1.05;
+		letter-spacing: 0.04em;
+		text-shadow: 0 0.2rem 0.5rem rgba(0, 0, 0, 0.7);
+		animation: banner-copy-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+	}
+
+	.banner-subtitle {
+		font-size: clamp(1rem, 2vw, 1.75rem);
+		font-weight: 500;
+		line-height: 1.4;
+		letter-spacing: 0.04em;
+		text-shadow: 0 0.125rem 0.3rem rgba(0, 0, 0, 0.72);
+		animation: banner-copy-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.18s
+			both;
+	}
+
+	.banner-waves {
+		height: clamp(4rem, 12vh, 8.5rem);
+		color: var(--page-bg);
+	}
+
+	.banner-waves svg {
+		display: block;
+		width: 100%;
+		height: 100%;
+	}
+
+	.wave {
+		fill: currentColor;
+		animation: wave-move 18s cubic-bezier(0.55, 0.5, 0.45, 0.5) infinite;
+	}
+
+	.wave-1 {
+		opacity: 0.25;
+		animation-delay: -2s;
+		animation-duration: 7s;
+	}
+
+	.wave-2 {
+		opacity: 0.5;
+		animation-delay: -3s;
+		animation-duration: 10s;
+	}
+
+	.wave-3 {
+		opacity: 0.75;
+		animation-delay: -4s;
+		animation-duration: 13s;
+	}
+
+	.wave-4 {
+		animation-delay: -5s;
+		animation-duration: 20s;
+	}
+
+	#banner.banner-depth-in {
+		animation: banner-depth-in 0.85s cubic-bezier(0.25, 0.46, 0.45, 0.94)
+			forwards;
+		transform-origin: center;
+	}
+
+	@keyframes banner-ken-burns {
+		from {
+			transform: scale(1.03);
+		}
+
+		to {
+			transform: scale(1.13);
+		}
+	}
+
+	@keyframes banner-copy-in {
+		from {
+			opacity: 0;
+			transform: translateY(1.75rem);
+			filter: blur(0.4rem);
+		}
+
+		to {
+			opacity: 1;
+			transform: translateY(0);
+			filter: blur(0);
+		}
+	}
+
+	@keyframes wave-move {
+		from {
+			transform: translate3d(-5.625rem, 0, 0);
+		}
+
+		to {
+			transform: translate3d(5.3125rem, 0, 0);
+		}
+	}
+
+	@keyframes banner-depth-in {
+		from {
+			filter: blur(10px);
+			scale: 1.5;
+		}
+
+		to {
+			filter: none;
+			scale: 1;
+		}
+	}
+
+	@media (max-width: 767px) {
+		.banner-text-overlay {
+			padding-top: 3.5rem;
+		}
+
+		.banner-title {
+			font-size: clamp(3.25rem, 16vw, 5rem);
+		}
+
+		.banner-subtitle {
+			font-size: clamp(1rem, 4.5vw, 1.25rem);
+		}
+
+		.banner-waves {
+			height: clamp(3.5rem, 10vh, 5rem);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		#banner.banner-depth-in,
+		.banner-kb img,
+		.banner-title,
+		.banner-subtitle,
+		.wave {
+			animation: none;
+		}
+	}
+</style>

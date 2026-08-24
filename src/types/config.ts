@@ -22,9 +22,21 @@ export type SiteConfig = {
 	};
 	banner: {
 		enable: boolean;
-		src: string;
-		darkSrc?: string;
+		src: string[];
 		position?: "top" | "center" | "bottom";
+		carousel?: {
+			enable: boolean;
+			interval: number;
+			fadeDuration: number;
+		};
+		waves?: {
+			enable: boolean;
+		};
+		homeText?: {
+			enable: boolean;
+			title: string;
+			subtitle: string;
+		};
 		credit: {
 			enable: boolean;
 			text: string;
