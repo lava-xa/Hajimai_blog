@@ -17,7 +17,7 @@ export const siteConfig: SiteConfig = {
 	},
 	banner: {
 		enable: true,
-		src: ["assets/images/banner.webp", "assets/images/banner_dark.webp"], // 仅使用这两张原有图片进行轮播
+		src: ["assets/images/banner1.webp", "assets/images/banner2.png","assets/images/banner3.jpeg"], // 仅使用这两张原有图片进行轮播
 		position: "center", // Equivalent to object-position, only supports 'top', 'center', 'bottom'. 'center' by default
 		carousel: {
 			enable: true,
@@ -29,8 +29,8 @@ export const siteConfig: SiteConfig = {
 		},
 		homeText: {
 			enable: true,
-			title: "哈基麦",
-			subtitle: "孩子们这里是传奇耐活王哈基麦",
+			title: "nekoの部屋",
+			subtitle: "",
 		},
 		credit: {
 			enable: false, // Display the credit text of the banner image

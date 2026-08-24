@@ -1,0 +1,20 @@
+---
+import Calendar from "./Calendar.astro";
+import SiteStats from "./SiteStats.astro";
+
+interface Props {
+	class?: string;
+}
+
+const className = Astro.props.class;
+---
+
+<aside id="right-sidebar" class:list={[className, "w-full"]} aria-label="站点信息">
+	<div
+		id="right-sidebar-sticky"
+		class="sticky top-4 flex w-full flex-col gap-4 transition-all duration-700"
+	>
+		<SiteStats class="onload-animation" style="animation-delay: 200ms" />
+		<Calendar class="onload-animation" style="animation-delay: 250ms" />
+	</div>
+</aside>

@@ -1,0 +1,150 @@
+---
+import { Icon } from "astro-icon/components";
+import {
+	getCategoryList,
+	getSortedPosts,
+	getTagList,
+} from "../../utils/content-utils";
+import WidgetLayout from "./WidgetLayout.astro";
+
+interface Props {
+	class?: string;
+	style?: string;
+}
+
+const { class: className, style } = Astro.props;
+const posts = await getSortedPosts();
+const categories = await getCategoryList();
+const tags = await getTagList();
+
+let totalWords = 0;
+for (const post of posts) {
+	const { remarkPluginFrontmatter } = await post.render();
+	totalWords += Number(remarkPluginFrontmatter.words ?? 0);
+}
+
+const sortedDates = posts
+	.map((post) => post.data.published.getTime())
+	.sort((a, b) => a - b);
+const siteStartDate = new Date(sortedDates[0] ?? Date.now()).toISOString();
+const lastPostDate = new Date(sortedDates.at(-1) ?? Date.now()).toISOString();
+
+const stats = [
+	{
+		icon: "material-symbols:article-outline",
+		label: "文章",
+		value: posts.length.toLocaleString(),
+	},
+	{
+		icon: "material-symbols:folder-outline",
+		label: "分类",
+		value: categories.length.toLocaleString(),
+	},
+	{
+		icon: "material-symbols:label-outline",
+		label: "标签",
+		value: tags.length.toLocaleString(),
+	},
+	{
+		icon: "material-symbols:text-ad-outline-rounded",
+		label: "总字数",
+		value: totalWords.toLocaleString(),
+	},
+	{
+		icon: "material-symbols:calendar-clock-outline",
+		label: "运行天数",
+		value: "0",
+		suffix: "天",
+		id: "running-days",
+	},
+	{
+		icon: "material-symbols:ecg-heart-outline",
+		label: "最后活动",
+		value: "0",
+		suffix: "天前",
+		id: "last-update",
+	},
+];
+---
+
+<WidgetLayout
+	name="站点统计"
+	id="site-stats"
+	class={className}
+	style={style}
+>
+	<div
+		class="flex flex-col gap-1 pb-1"
+		data-site-stats
+		data-site-start-date={siteStartDate}
+		data-last-post-date={lastPostDate}
+	>
+		{
+			stats.map((stat) => (
+				<div class="flex items-center justify-between px-2 py-2">
+					<div class="flex min-w-0 flex-1 items-center gap-2.5">
+						<Icon
+							name={stat.icon}
+							class="shrink-0 text-xl text-[var(--primary)]"
+						/>
+						<span class="text-sm font-medium leading-tight text-neutral-700 transition dark:text-neutral-300">
+							{stat.label}
+						</span>
+					</div>
+					<div class="ml-3 flex shrink-0 items-center">
+						<span
+							class="text-base font-bold text-neutral-900 transition dark:text-neutral-100"
+							data-stat-id={stat.id}
+						>
+							{stat.value}
+						</span>
+						{stat.suffix && (
+							<span class="ml-1 text-sm text-neutral-500 transition dark:text-neutral-400">
+								{stat.suffix}
+							</span>
+						)}
+					</div>
+				</div>
+			))
+		}
+	</div>
+</WidgetLayout>
+
+<script>
+	function updateSiteStats() {
+		const today = new Date();
+		const millisecondsPerDay = 1000 * 60 * 60 * 24;
+
+		document.querySelectorAll("[data-site-stats]").forEach((root) => {
+			if (!(root instanceof HTMLElement)) return;
+
+			const startDate = new Date(root.dataset.siteStartDate ?? today);
+			const latestPost = new Date(root.dataset.lastPostDate ?? today);
+			const runningDays = Math.max(
+				1,
+				Math.ceil(
+					(today.getTime() - startDate.getTime()) / millisecondsPerDay,
+				),
+			);
+			const daysSinceLastUpdate = Math.max(
+				0,
+				Math.floor(
+					(today.getTime() - latestPost.getTime()) / millisecondsPerDay,
+				),
+			);
+
+			const runningDaysElement = root.querySelector(
+				'[data-stat-id="running-days"]',
+			);
+			const lastUpdateElement = root.querySelector(
+				'[data-stat-id="last-update"]',
+			);
+			if (runningDaysElement) runningDaysElement.textContent = String(runningDays);
+			if (lastUpdateElement) {
+				lastUpdateElement.textContent = String(daysSinceLastUpdate);
+			}
+		});
+	}
+
+	updateSiteStats();
+</script>
